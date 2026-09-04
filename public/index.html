@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rachei · Painel de Testes</title>
+<style>
+  :root {
+    --bg: #F5F5F8; --panel: #FFFFFF; --panel-2: #FAFAFC; --ink: #15151A; --muted: #6B6B76;
+    --faint: #9A9AA4; --line: #ECECF0; --accent: #FF5436; --accent-2: #FF8A3D;
+    --ok: #0E8F5C; --ok-bg: #E7F6EE; --fail: #E5484D; --fail-bg: #FDECEC;
+    --skip: #8A8A94; --skip-bg: #EFEFF3; --run: #B5701A; --run-bg: #FCF0DE;
+    --term-bg: #14141A; --term-ink: #D8D8E0;
+    --shadow: 0 1px 2px rgba(20,20,26,.04), 0 8px 24px rgba(20,20,26,.06);
+    --font: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --display: "Bricolage Grotesque", var(--font);
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121216; --panel: #1B1B21; --panel-2: #202027; --ink: #F0F0F4; --muted: #A0A0AC;
+      --faint: #6E6E7A; --line: #2A2A33; --ok: #3FBE86; --ok-bg: #123024; --fail: #F2666B;
+      --fail-bg: #35191B; --skip: #8A8A94; --skip-bg: #26262E; --run: #E0A24B; --run-bg: #33250F;
+      --term-bg: #0C0C11; --term-ink: #CFCFDA;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 30px 22px 60px; }
+
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+  .logo { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 20px; flex-shrink: 0; }
+  h1 { font-family: var(--display); font-weight: 800; letter-spacing: -.02em; font-size: 22px; margin: 0; }
+  header .sub { font-size: 13px; color: var(--muted); margin-top: 1px; }
+  header .spacer { flex: 1; }
+  .btn { border: none; border-radius: 12px; font-weight: 800; font-size: 13.5px; cursor: pointer; font-family: var(--font);
+    padding: 10px 16px; transition: transform .08s, opacity .15s; }
+  .btn:active { transform: translateY(1px); }
+  .btn[disabled] { opacity: .5; cursor: default; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: 0 6px 16px rgba(255,84,54,.28); }
+  .btn-ghost { background: var(--panel); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow); }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .card { background: var(--panel); border: 1.5px solid var(--line); border-radius: 18px; padding: 16px 18px; box-shadow: var(--shadow);
+    cursor: pointer; transition: border-color .15s; }
+  .card.selected { border-color: var(--accent); }
+  .card .top { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--faint); flex-shrink: 0; }
+  .dot.passed { background: var(--ok); } .dot.failed { background: var(--fail); }
+  .dot.running { background: var(--run); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .card h3 { font-family: var(--display); font-weight: 800; font-size: 17px; margin: 0; letter-spacing: -.01em; }
+  .card .desc { font-size: 12px; color: var(--muted); margin: 7px 0 12px; line-height: 1.45; min-height: 34px; }
+  .card .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .counts { display: flex; gap: 12px; align-items: baseline; }
+  .counts b { font-family: var(--display); font-size: 22px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .counts .c-ok { color: var(--ok); } .counts .c-fail { color: var(--fail); } .counts .c-total { color: var(--faint); font-size: 12px; font-weight: 700; }
+  .card .meta { font-size: 11.5px; color: var(--faint); margin-top: 8px; min-height: 15px; }
+
+  .pill { font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+  .pill.idle { background: var(--skip-bg); color: var(--skip); }
+  .pill.running { background: var(--run-bg); color: var(--run); }
+  .pill.passed { background: var(--ok-bg); color: var(--ok); }
+  .pill.failed { background: var(--fail-bg); color: var(--fail); }
+
+  /* Main split */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 880px) { .split { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1.5px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+  .panel-head { display: flex; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 1px solid var(--line); }
+  .panel-head h2 { font-family: var(--display); font-weight: 800; font-size: 14px; margin: 0; letter-spacing: -.01em; }
+  .panel-head .spacer { flex: 1; }
+
+  /* Terminal */
+  .term { background: var(--term-bg); color: var(--term-ink); font-family: var(--mono); font-size: 12px; line-height: 1.55;
+    padding: 12px 14px; height: 460px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+  .term .l-ok { color: #56d38a; } .term .l-fail { color: #ff7a80; } .term::-webkit-scrollbar { width: 9px; }
+  .term::-webkit-scrollbar-thumb { background: #33333e; border-radius: 9px; }
+
+  /* Results list */
+  .results { height: 460px; overflow: auto; }
+  .filters { display: flex; gap: 6px; }
+  .chip { font-size: 11.5px; font-weight: 700; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--muted); cursor: pointer; }
+  .chip.active { background: var(--accent); color: #fff; border-color: transparent; }
+  .t-row { border-bottom: 1px solid var(--line); }
+  .t-head { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: default; }
+  .t-head.has-error { cursor: pointer; }
+  .t-head:hover.has-error { background: var(--panel-2); }
+  .t-ic { width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 900; color: #fff; }
+  .t-ic.passed { background: var(--ok); } .t-ic.failed { background: var(--fail); } .t-ic.skipped { background: var(--skip); }
+  .t-name { flex: 1; font-size: 13px; min-width: 0; }
+  .t-name .s { display: block; font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .t-dur { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .t-caret { color: var(--faint); font-size: 11px; width: 12px; text-align: center; }
+  .t-error { display: none; background: var(--term-bg); color: var(--term-ink); font-family: var(--mono); font-size: 11.5px;
+    padding: 12px 16px; white-space: pre-wrap; word-break: break-word; border-top: 1px solid #2a2a33; max-height: 300px; overflow: auto; }
+  .t-row.open .t-error { display: block; }
+  .t-row.open .t-caret { transform: rotate(90deg); }
+  .empty { padding: 40px 20px; text-align: center; color: var(--faint); font-size: 13px; }
+
+  /* E2E controls */
+  .controls { background: var(--panel); border: 1.5px solid var(--line); border-radius: 18px; box-shadow: var(--shadow);
+    padding: 14px 16px; margin-bottom: 14px; }
+  .controls .ctitle { display: flex; align-items: center; gap: 8px; font-family: var(--display); font-weight: 800;
+    font-size: 13px; margin-bottom: 12px; letter-spacing: -.01em; }
+  .controls .ctitle .tag { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--accent); background: var(--accent-bg, rgba(255,84,54,.1)); padding: 3px 8px; border-radius: 999px; }
+  .cgrid { display: flex; flex-wrap: wrap; gap: 16px 22px; align-items: flex-end; }
+  .cfield { display: flex; flex-direction: column; gap: 6px; }
+  .cfield > label { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 11px; padding: 3px; gap: 3px; }
+  .seg button { border: none; background: transparent; color: var(--muted); font-family: var(--font); font-weight: 800;
+    font-size: 12.5px; padding: 7px 14px; border-radius: 8px; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; box-shadow: 0 3px 10px rgba(255,84,54,.28); }
+  .cfield select, .cfield input { font-family: var(--font); font-size: 13px; color: var(--ink); background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; min-width: 190px; outline: none; }
+  .cfield select:focus, .cfield input:focus { border-color: var(--accent); }
+  .cfield .hint { font-size: 11px; color: var(--faint); max-width: 240px; line-height: 1.4; }
+  .gui-btns { display: flex; gap: 8px; margin-left: auto; }
+  .btn-gui { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 11px;
+    font-weight: 800; font-size: 12.5px; padding: 9px 14px; cursor: pointer; font-family: var(--font); }
+  .btn-gui:hover { border-color: var(--accent); }
+  .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--ink); color: var(--bg);
+    font-weight: 700; font-size: 13px; padding: 11px 18px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.3);
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 50; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+  /* History */
+  .history { margin-top: 14px; }
+  .hist-list { display: flex; flex-direction: column; }
+  .hist-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 12.5px; }
+  .hist-item:hover { background: var(--panel-2); }
+  .hist-item .hn { font-weight: 700; }
+  .hist-item .ht { color: var(--faint); margin-left: auto; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">R</div>
+    <div>
+      <h1>Painel de Testes</h1>
+      <div class="sub">Rachei · backend, frontend e E2E em tempo real</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" id="run-all">▶ Rodar tudo</button>
+  </header>
+
+  <div class="cards" id="cards"></div>
+
+  <div id="controls"></div>
+
+  <div class="split">
+    <div class="panel">
+      <div class="panel-head">
+        <h2 id="term-title">Saída ao vivo</h2>
+        <div class="spacer"></div>
+        <button class="chip" id="clear-term">limpar</button>
+      </div>
+      <div class="term" id="term"><span style="color:#6e6e7a">Escolha uma suíte e clique em Rodar…</span></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Testes</h2>
+        <div class="spacer"></div>
+        <div class="filters">
+          <button class="chip active" data-filter="all">Todos</button>
+          <button class="chip" data-filter="failed">Só falhas</button>
+        </div>
+      </div>
+      <div class="results" id="results"><div class="empty">Sem resultados ainda.</div></div>
+    </div>
+  </div>
+
+  <div class="panel history">
+    <div class="panel-head"><h2>Histórico</h2></div>
+    <div class="hist-list" id="history"><div class="empty">Nenhuma execução ainda.</div></div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s)
+const el = (t, c) => { const e = document.createElement(t); if (c) e.className = c; return e }
+const fmtMs = (ms) => ms == null ? '' : ms < 1000 ? ms + 'ms' : (ms / 1000).toFixed(1) + 's'
+
+const state = { suites: {}, view: null, filter: 'all', history: [], running: false,
+  e2eOpts: { mode: 'headless', spec: '', grep: '', slowmo: '0' } }
+
+async function init() {
+  const metas = await (await fetch('/api/suites')).json()
+  for (const m of metas) state.suites[m.id] = { ...m, status: 'idle', passed: 0, failed: 0, tests: [], logs: [], durationMs: null }
+  state.view = metas[0]?.id ?? null
+  renderCards()
+  renderMain()
+}
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show')
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600)
+}
+
+function renderCards() {
+  const box = $('#cards'); box.innerHTML = ''
+  for (const id in state.suites) {
+    const s = state.suites[id]
+    const card = el('div', 'card' + (state.view === id ? ' selected' : ''))
+    card.onclick = () => { state.view = id; renderCards(); renderMain() }
+    const total = s.tests.length || (s.passed + s.failed)
+    card.innerHTML = `
+      <div class="top">
+        <span class="dot ${s.status}"></span>
+        <h3>${s.name}</h3>
+        <div style="flex:1"></div>
+        <span class="pill ${s.status}">${({idle:'parado',running:'rodando',passed:'passou',failed:'falhou'})[s.status]}</span>
+      </div>
+      <div class="desc">${s.description}</div>
+      <div class="row">
+        <div class="counts">
+          <span><b class="c-ok">${s.passed}</b> <span class="c-total">ok</span></span>
+          <span><b class="c-fail">${s.failed}</b> <span class="c-total">falha</span></span>
+        </div>
+      </div>
+      <div class="meta">${total ? total + ' testes' : ''}${s.durationMs != null ? ' · ' + fmtMs(s.durationMs) : ''}</div>`
+    const btnRow = el('div', 'row'); btnRow.style.marginTop = '12px'
+    const btn = el('button', 'btn btn-ghost'); btn.style.width = '100%'
+    btn.textContent = s.status === 'running' ? 'Rodando…' : '▶ Rodar'
+    btn.disabled = s.status === 'running'
+    btn.onclick = (e) => { e.stopPropagation(); runSuite(id) }
+    btnRow.appendChild(btn); card.appendChild(btnRow)
+    box.appendChild(card)
+  }
+}
+
+function renderControls() {
+  const box = $('#controls')
+  const s = state.suites[state.view]
+  const opts = s?.options
+  if (!opts) { box.innerHTML = ''; return }
+  const o = state.e2eOpts
+  const modeBtns = opts.modes.map((m) =>
+    `<button class="${o.mode === m.id ? 'on' : ''}" data-mode="${m.id}" title="${escapeHtml(m.hint)}">${escapeHtml(m.label)}</button>`).join('')
+  const specOpts = ['<option value="">Todos os fluxos</option>']
+    .concat(opts.specs.map((sp) =>
+      `<option value="${escapeHtml(sp.file)}"${o.spec === sp.file ? ' selected' : ''}>${escapeHtml(sp.file.replace('.spec.ts', ''))} · ${sp.titles.length} teste(s)</option>`)).join('')
+  const guiBtns = opts.gui.map((g) =>
+    `<button class="btn-gui" data-gui="${g.id}" title="${escapeHtml(g.hint)}">${escapeHtml(g.label)}</button>`).join('')
+  const running = s.status === 'running'
+  const activeMode = opts.modes.find((m) => m.id === o.mode)
+  const speedField = (o.mode === 'headed' && opts.speeds) ? `
+        <div class="cfield">
+          <label>Velocidade</label>
+          <select id="speed-sel">${opts.speeds.map((sp) =>
+            `<option value="${sp.id}"${o.slowmo === sp.id ? ' selected' : ''}>${escapeHtml(sp.label)}</option>`).join('')}</select>
+        </div>` : ''
+  box.innerHTML = `
+    <div class="controls">
+      <div class="ctitle"><span class="tag">${escapeHtml(s.name)}</span> Como quer acompanhar</div>
+      <div class="cgrid">
+        <div class="cfield">
+          <label>Modo</label>
+          <div class="seg" id="mode-seg">${modeBtns}</div>
+          <div class="hint">${escapeHtml(activeMode?.hint || '')}</div>
+        </div>
+        ${speedField}
+        <div class="cfield">
+          <label>Fluxo</label>
+          <select id="spec-sel">${specOpts}</select>
+        </div>
+        <div class="cfield">
+          <label>Filtro por texto</label>
+          <input id="grep-in" type="text" placeholder="ex: login inválido" value="${escapeHtml(o.grep)}" />
+        </div>
+        <div class="gui-btns">${guiBtns}</div>
+      </div>
+    </div>`
+  box.querySelectorAll('#mode-seg button').forEach((b) => b.onclick = () => { state.e2eOpts.mode = b.dataset.mode; renderControls() })
+  const speedSel = $('#speed-sel'); if (speedSel) speedSel.onchange = (e) => { state.e2eOpts.slowmo = e.target.value }
+  $('#spec-sel').onchange = (e) => { state.e2eOpts.spec = e.target.value }
+  $('#grep-in').oninput = (e) => { state.e2eOpts.grep = e.target.value.trim() }
+  box.querySelectorAll('[data-gui]').forEach((b) => b.onclick = () => launchGui(b.dataset.gui))
+  box.querySelectorAll('.btn-gui').forEach((b) => b.disabled = running)
+}
+
+async function launchGui(action) {
+  const o = state.e2eOpts
+  const qs = new URLSearchParams({ spec: o.spec, grep: o.grep }).toString()
+  const labels = { ui: 'Modo UI', report: 'Relatório' }
+  toast(`Abrindo ${labels[action] || action}…`)
+  try {
+    const r = await (await fetch(`/api/launch/${action}${qs ? '?' + qs : ''}`)).json()
+    toast(r.ok ? `${labels[action]} aberto em janela própria.` : `Falhou: ${r.message}`)
+  } catch (e) { toast(`Falhou: ${e.message}`) }
+}
+
+function renderMain() {
+  const s = state.suites[state.view]
+  renderControls()
+  $('#term-title').textContent = s ? `Saída — ${s.name}` : 'Saída ao vivo'
+  const term = $('#term')
+  if (!s || !s.logs.length) term.innerHTML = '<span style="color:#6e6e7a">Sem saída ainda.</span>'
+  else {
+    term.innerHTML = ''
+    for (const line of s.logs) {
+      const span = el('div', / \.\.\. ok$|^\s*[✓√]|✓/.test(line) ? 'l-ok' : / \.\.\. (FAIL|ERROR)|^\s*[×✗]|✘/.test(line) ? 'l-fail' : '')
+      span.textContent = line; term.appendChild(span)
+    }
+    term.scrollTop = term.scrollHeight
+  }
+  renderResults()
+}
+
+function renderResults() {
+  const s = state.suites[state.view]
+  const box = $('#results'); box.innerHTML = ''
+  if (!s || !s.tests.length) { box.innerHTML = '<div class="empty">Sem resultados ainda.</div>'; return }
+  const list = state.filter === 'failed' ? s.tests.filter((t) => t.status === 'failed') : s.tests
+  if (!list.length) { box.innerHTML = '<div class="empty">Nenhuma falha 🎉</div>'; return }
+  for (const t of list) {
+    const row = el('div', 't-row')
+    const head = el('div', 't-head' + (t.error ? ' has-error' : ''))
+    head.innerHTML = `
+      <span class="t-ic ${t.status}">${t.status === 'passed' ? '✓' : t.status === 'failed' ? '✕' : '–'}</span>
+      <span class="t-name">${escapeHtml(t.name)}<span class="s">${escapeHtml(t.suite || '')}</span></span>
+      <span class="t-dur">${fmtMs(t.durationMs)}</span>
+      <span class="t-caret">${t.error ? '▸' : ''}</span>`
+    if (t.error) { const err = el('div', 't-error'); err.textContent = t.error; row.appendChild(head); row.appendChild(err)
+      head.onclick = () => row.classList.toggle('open') }
+    else row.appendChild(head)
+    box.appendChild(row)
+  }
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) }
+
+function runSuite(id) {
+  return new Promise((resolve) => {
+    const s = state.suites[id]
+    s.status = 'running'; s.passed = 0; s.failed = 0; s.tests = []; s.logs = []; s.durationMs = null
+    state.view = id; renderCards(); renderMain()
+    let qs = ''
+    if (state.suites[id].options) {
+      const o = state.e2eOpts
+      qs = '?' + new URLSearchParams({ mode: o.mode, spec: o.spec, grep: o.grep, slowmo: o.slowmo }).toString()
+    }
+    const es = new EventSource(`/api/run/${id}${qs}`)
+    es.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data)
+      if (msg.type === 'log') { s.logs.push(msg.line); if (state.view === id) appendTermLine(msg.line) }
+      else if (msg.type === 'progress') { s.passed = msg.passed; s.failed = msg.failed; if (state.view === id) updateCounts(id) }
+      else if (msg.type === 'done') {
+        s.tests = msg.tests || []; s.durationMs = msg.summary?.durationMs ?? s.durationMs
+        s.passed = msg.summary?.passed ?? s.passed; s.failed = msg.summary?.failed ?? s.failed
+        s.status = (msg.summary?.failed || msg.code !== 0) ? 'failed' : 'passed'
+        pushHistory(id, msg)
+        es.close(); renderCards(); if (state.view === id) renderMain(); resolve()
+      } else if (msg.type === 'error') {
+        s.logs.push('‼ ' + msg.message); s.status = 'failed'; es.close(); renderCards(); if (state.view === id) renderMain(); resolve()
+      }
+    }
+    es.onerror = () => { if (s.status === 'running') { s.status = 'failed' } es.close(); renderCards(); resolve() }
+  })
+}
+
+function appendTermLine(line) {
+  const term = $('#term')
+  if (term.querySelector('span[style]')) term.innerHTML = ''
+  const span = el('div', / \.\.\. ok$|^\s*[✓√]|✓/.test(line) ? 'l-ok' : / \.\.\. (FAIL|ERROR)|^\s*[×✗]|✘/.test(line) ? 'l-fail' : '')
+  span.textContent = line; term.appendChild(span); term.scrollTop = term.scrollHeight
+}
+function updateCounts(id) {
+  const cards = document.querySelectorAll('#cards .card')
+  const idx = Object.keys(state.suites).indexOf(id)
+  const card = cards[idx]; if (!card) return
+  card.querySelector('.c-ok').textContent = state.suites[id].passed
+  card.querySelector('.c-fail').textContent = state.suites[id].failed
+}
+
+function pushHistory(id, msg) {
+  const s = state.suites[id]
+  state.history.unshift({ id, name: s.name, at: msg.at || new Date().toISOString(),
+    summary: msg.summary || { passed: s.passed, failed: s.failed }, tests: msg.tests || [], logs: [...s.logs] })
+  state.history = state.history.slice(0, 20)
+  renderHistory()
+}
+function renderHistory() {
+  const box = $('#history'); box.innerHTML = ''
+  if (!state.history.length) { box.innerHTML = '<div class="empty">Nenhuma execução ainda.</div>'; return }
+  state.history.forEach((h, i) => {
+    const item = el('div', 'hist-item')
+    const ok = !(h.summary.failed)
+    const time = new Date(h.at).toLocaleTimeString('pt-BR')
+    item.innerHTML = `<span class="dot ${ok ? 'passed' : 'failed'}"></span>
+      <span class="hn">${h.name}</span>
+      <span class="pill ${ok ? 'passed' : 'failed'}">${h.summary.passed || 0}✓ ${h.summary.failed || 0}✕</span>
+      <span class="ht">${time}${h.summary.durationMs != null ? ' · ' + fmtMs(h.summary.durationMs) : ''}</span>`
+    item.onclick = () => {
+      const s = state.suites[h.id]
+      s.tests = h.tests; s.logs = h.logs; s.passed = h.summary.passed || 0; s.failed = h.summary.failed || 0
+      s.durationMs = h.summary.durationMs; s.status = ok ? 'passed' : 'failed'
+      state.view = h.id; renderCards(); renderMain()
+    }
+    box.appendChild(item)
+  })
+}
+
+$('#run-all').onclick = async () => {
+  if (state.running) return
+  state.running = true; $('#run-all').disabled = true; $('#run-all').textContent = 'Rodando…'
+  for (const id of Object.keys(state.suites)) await runSuite(id)
+  state.running = false; $('#run-all').disabled = false; $('#run-all').textContent = '▶ Rodar tudo'
+}
+$('#clear-term').onclick = () => { const s = state.suites[state.view]; if (s) { s.logs = [] } renderMain() }
+document.querySelectorAll('.filters .chip').forEach((c) => c.onclick = () => {
+  state.filter = c.dataset.filter
+  document.querySelectorAll('.filters .chip').forEach((x) => x.classList.toggle('active', x === c))
+  renderResults()
+})
+
+init()
+</script>
+</body>
+</html>

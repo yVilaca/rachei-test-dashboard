@@ -1,0 +1,10 @@
+{
+  "name": "rachei-test-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Painel local para rodar e visualizar os testes do Rachei (backend, frontend e E2E).",
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}
